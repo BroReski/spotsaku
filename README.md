@@ -111,6 +111,55 @@ lib/
 | createdAt     | TEXT    | Timestamp pembuatan                      |
 | updatedAt     | TEXT    | Timestamp pembaruan terakhir             |
 
+## Panduan Pengembang (Developer Guide)
+
+Bagian ini menjelaskan standar penulisan kode, penataan gaya (styling), format berkas, serta petunjuk umum untuk pengembangan dan pemeliharaan aplikasi SpotSaku.
+
+### 1. Pola Arsitektur (Architecture Pattern)
+SpotSaku menggunakan arsitektur berlapis (layered architecture) yang terbagi menjadi:
+- **Data Layer**:
+  - **Models** ([spot.dart](file:///D:/Cakrawala/SMT%204/Mobile%20Computing/spotsaku/lib/data/models/spot.dart)): Struktur representasi data (immutable) dengan method pembantu `fromMap`, `toMap`, dan `copyWith`.
+  - **Database** ([database_helper.dart](file:///D:/Cakrawala/SMT%204/Mobile%20Computing/spotsaku/lib/data/database/database_helper.dart)): Singleton untuk akses langsung `sqflite` (SQLite), migrasi, dan eksekusi SQL mentah.
+  - **Repositories** ([spot_repository.dart](file:///D:/Cakrawala/SMT%204/Mobile%20Computing/spotsaku/lib/data/repositories/spot_repository.dart)): Abstraksi data access, menyimpan logika waktu pembaruan (`updatedAt`), penyalinan gambar, ekspor file (CSV/JSON), dan pencarian/penyaringan tingkat data.
+- **Presentation Layer**:
+  - **Providers** ([providers/](file:///D:/Cakrawala/SMT%204/Mobile%20Computing/spotsaku/lib/presentation/providers/)): Mengelola status (state) aplikasi menggunakan `ChangeNotifier` (`SpotProvider`, `ThemeProvider`, `SettingsProvider`).
+  - **Screens** ([screens/](file:///D:/Cakrawala/SMT%204/Mobile%20Computing/spotsaku/lib/presentation/screens/)): Widget halaman utama aplikasi (Home, Detail, Form Add/Edit, dan Stats/Settings).
+  - **Widgets** ([widgets/](file:///D:/Cakrawala/SMT%204/Mobile%20Computing/spotsaku/lib/presentation/widgets/)): Komponen UI modular dan reusable (`SpotCard`, `CategoryChip`, `StarRating`).
+- **Utils Layer** ([utils/](file:///D:/Cakrawala/SMT%204/Mobile%20Computing/spotsaku/lib/utils/)): Layanan perangkat keras seperti `Geolocator`, `ImagePicker`, `url_launcher`, dan `NotificationService`.
+
+### 2. Format & Standardisasi Kode (Formatting & Coding Standards)
+Semua developer wajib mengikuti pedoman berikut untuk menjaga konsistensi repositori:
+- **Linter & Analyzer**: Proyek dikonfigurasi menggunakan `package:flutter_lints/flutter.yaml`. Jangan abaikan peringatan (warning) linter kecuali dengan komentar penjelas `// ignore: <lint_rule>`.
+- **Format Otomatis**: Jalankan perintah pemformatan resmi Dart sebelum melakukan komit kode:
+  ```bash
+  flutter format lib/
+  ```
+- **Trailing Commas**: Selalu gunakan koma penutup (trailing commas) pada argument list yang panjang atau berumpun agar auto-formatter dapat merapikan baris kode secara vertikal.
+- **Dokumentasi Kode**: Gunakan komentar triple-slash `///` untuk kelas, metode, atau atribut publik, serta sertakan deklarasi `library;` pada awal berkas pustaka baru.
+
+### 3. Penataan Gaya & Tema (Styling & Theming Guide)
+SpotSaku menerapkan panduan desain yang konsisten dengan tema adaptif:
+- **Material 3**: Proyek menggunakan spesifikasi Material 3 (`useMaterial3: true`).
+- **Sistem Warna Dinamis**: Warna diatur secara dinamis menggunakan `ColorScheme.fromSeed` dengan seed warna biru utama `Color(0xFF1E88E5)`.
+- **Penggunaan Token Warna**: Hindari menggunakan warna konstan/hardcoded langsung pada widget (seperti `Colors.blue` atau `Colors.white`). Selalu ambil warna dari skema tema aktif, contoh:
+  ```dart
+  final theme = Theme.of(context);
+  final backgroundColor = theme.colorScheme.surface;
+  final outlineColor = theme.colorScheme.outline;
+  ```
+- **Adaptasi Tema (Dark Mode)**: Gunakan `ThemeProvider` untuk menyelaraskan tampilan. Pastikan widget kustom mendukung transisi warna yang kontras saat berganti dari Light Mode ke Dark Mode.
+
+### 4. Manajemen Media & Perangkat Keras (Media & Hardware Management)
+- **Persistensi Gambar**: Gambar yang diambil dari kamera (`image_picker`) berada di direktori cache sementara OS. Pustaka `SpotRepository.persistPhoto` bertanggung jawab menyalin berkas tersebut ke direktori permanen aplikasi (`/spot_photos`) agar jalur berkas (`photoPath`) tetap valid selamanya.
+- **Lokasi & Google Maps**: Perekaman koordinat menggunakan `geolocator`. Untuk navigasi, gunakan `url_launcher` dengan intent universal `https://www.google.com/maps/dir/?api=1&destination=lat,lng` agar perangkat mengarah ke aplikasi peta native atau browser.
+
+### 5. Panduan Pengembangan Berkelanjutan (Workflow Pengeditan & Fitur Baru)
+Jika Anda perlu menambahkan properti baru pada entitas `Spot` (misal: menambahkan koordinat ketinggian `altitude` atau `tag` tambahan):
+1. **Perbarui Database**: Ubah versi skema di `AppDatabase.dbVersion` di `constants.dart` dan buat skrip migrasi `ALTER TABLE` pada fungsi `_onUpgrade` di [database_helper.dart](file:///D:/Cakrawala/SMT%204/Mobile Computing/spotsaku/lib/data/database/database_helper.dart).
+2. **Perbarui Model**: Tambahkan parameter tersebut ke konstruktor `Spot`, method `fromMap`, `toMap`, dan `copyWith` di [spot.dart](file:///D:/Cakrawala/SMT%204/Mobile Computing/spotsaku/lib/data/models/spot.dart).
+3. **Perbarui Ekspor Data**: Tambahkan kolom baru ke data header dan baris pada fungsi `toCsv()` di [spot_repository.dart](file:///D:/Cakrawala/SMT%204/Mobile Computing/spotsaku/lib/data/repositories/spot_repository.dart).
+4. **Perbarui Antarmuka (UI)**: Sesuaikan halaman tambah/edit form, detail screen, atau card untuk mengakomodasi data baru tersebut.
+
 ## Tim Pengembang (Kelompok 1)
 - Muhammad Reski
 - Nanda Fadila
