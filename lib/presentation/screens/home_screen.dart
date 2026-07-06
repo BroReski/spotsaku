@@ -1,19 +1,24 @@
 /// Home / Dashboard screen.
 ///
-/// Displays the list of saved spots with search, category chips, a
-/// dark-mode toggle, and a FAB to add a new spot. Tapping a card opens
-/// the Detail screen.
+/// Displays the list of saved spots with search, category chips,
+/// dark-mode toggle, and FAB.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/constants/app_colors.dart';
 import '../../data/models/spot.dart';
 import '../../utils/constants.dart';
+
 import '../providers/spot_provider.dart';
 import '../providers/theme_provider.dart';
+
 import '../widgets/category_chip.dart';
+import '../widgets/home_header.dart';
 import '../widgets/spot_card.dart';
+import '../widgets/search_box.dart';
+
 import 'add_edit_screen.dart';
 import 'detail_screen.dart';
 import 'stats_settings_screen.dart';
@@ -29,7 +34,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    // Load spots after the first frame so providers are available.
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<SpotProvider>().loadSpots();
     });
@@ -38,100 +43,155 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final spotProvider = context.watch<SpotProvider>();
+    final themeProvider = context.watch<ThemeProvider>();
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('SpotSaku'),
-        actions: [
-          // Dark mode toggle
-          IconButton(
-            icon: Icon(
-              context.read<ThemeProvider>().isDarkMode
-                  ? Icons.light_mode_outlined
-                  : Icons.dark_mode_outlined,
-            ),
-            tooltip: 'Ganti tema',
-            onPressed: () => context.read<ThemeProvider>().toggleTheme(),
-          ),
-          // Stats & settings
-          IconButton(
-            icon: const Icon(Icons.bar_chart_outlined),
-            tooltip: 'Statistik & Pengaturan',
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const StatsSettingsScreen()),
-            ),
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // --- Search bar ---
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: 'Cari spot...',
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                contentPadding: const EdgeInsets.symmetric(vertical: 0),
-              ),
-              onChanged: (value) => spotProvider.setSearchQuery(value),
-            ),
-          ),
-          // --- Category chips ---
-          SizedBox(
-            height: 48,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              children: AppCategories.chips.map((cat) {
-                return CategoryChip(
-                  label: cat,
-                  selected: spotProvider.selectedCategory == cat,
-                  onTap: () => spotProvider.setCategory(cat),
-                );
-              }).toList(),
-            ),
-          ),
-          const SizedBox(height: 4),
-          // --- Spot list ---
-          Expanded(
-            child: spotProvider.isLoading && spotProvider.spots.isEmpty
-                ? const Center(child: CircularProgressIndicator())
-                : spotProvider.error != null
-                    ? _ErrorState(
-                        message: spotProvider.error!,
-                        onRetry: () => spotProvider.loadSpots(),
-                      )
-                    : spotProvider.spots.isEmpty
-                        ? _EmptyState(
-                            onAdd: () => _navigateToAdd(context),
-                            isFiltered: spotProvider.searchQuery.isNotEmpty ||
-                                spotProvider.selectedCategory != 'Semua',
-                          )
-                        : RefreshIndicator(
-                        onRefresh: () => spotProvider.loadSpots(),
-                        child: ListView.builder(
-                          itemCount: spotProvider.spots.length,
-                          itemBuilder: (context, index) {
-                            final spot = spotProvider.spots[index];
-                            return SpotCard(
-                              spot: spot,
-                              onTap: () => _navigateToDetail(context, spot),
-                            );
-                          },
-                        ),
-                      ),
-          ),
-        ],
-      ),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _navigateToAdd(context),
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
         icon: const Icon(Icons.add),
-        label: const Text('Tambah Spot'),
+        label: const Text("Tambah Spot"),
+        onPressed: () => _navigateToAdd(context),
+      ),
+
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            children: [
+
+              /// HEADER
+              HomeHeader(
+                isDark: themeProvider.isDarkMode,
+                onTheme: () {
+                  themeProvider.toggleTheme();
+                },
+                onStatistic: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          const StatsSettingsScreen(),
+                    ),
+                  );
+                },
+              ),
+
+              const SizedBox(height: 24),
+
+              /// SEARCH
+              SearchBox(
+  onChanged: (value) {
+    spotProvider.setSearchQuery(value);
+  },
+),
+
+              const SizedBox(height: 20),
+
+              /// CATEGORY
+              SizedBox(
+                height: 36,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: AppCategories.chips.length,
+
+                  separatorBuilder: (_, __) =>
+                      const SizedBox(width: 10),
+
+                  itemBuilder: (context, index) {
+                    final category = AppCategories.chips[index];
+
+                    return SizedBox(
+                      width: 105,
+
+                      child: CategoryChip(
+                        label: category,
+                        selected:
+                            spotProvider.selectedCategory ==
+                                category,
+                        onTap: () {
+                          spotProvider.setCategory(category);
+                        },
+                      ),
+                    );
+                  },
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              /// LIST
+              Expanded(
+                child: spotProvider.isLoading &&
+                        spotProvider.spots.isEmpty
+                    ? const Center(
+                        child:
+                            CircularProgressIndicator(),
+                      )
+                    : spotProvider.error != null
+                        ? _ErrorState(
+                            message:
+                                spotProvider.error!,
+                            onRetry: () {
+                              spotProvider
+                                  .loadSpots();
+                            },
+                          )
+                        : spotProvider.spots.isEmpty
+                            ? _EmptyState(
+                                onAdd: () =>
+                                    _navigateToAdd(
+                                        context),
+                                isFiltered:
+                                    spotProvider
+                                            .searchQuery
+                                            .isNotEmpty ||
+                                        spotProvider
+                                                .selectedCategory !=
+                                            "Semua",
+                              )
+                            : RefreshIndicator(
+                                color:
+                                    AppColors.primary,
+                                onRefresh: () =>
+                                    spotProvider
+                                        .loadSpots(),
+                                child:
+                                    ListView.builder(
+                                  itemCount:
+                                      spotProvider
+                                          .spots.length,
+                                  itemBuilder:
+                                      (context,
+                                          index) {
+                                    final spot =
+                                        spotProvider
+                                            .spots[index];
+
+                                    return Padding(
+                                      padding:
+                                          const EdgeInsets.only(
+                                              bottom:
+                                                  14),
+                                      child:
+                                          SpotCard(
+                                        spot: spot,
+                                        onTap: () =>
+                                            _navigateToDetail(
+                                          context,
+                                          spot,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -139,21 +199,29 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _navigateToAdd(BuildContext context) async {
     final result = await Navigator.push<bool>(
       context,
-      MaterialPageRoute(builder: (_) => const AddEditScreen()),
+      MaterialPageRoute(
+        builder: (_) => const AddEditScreen(),
+      ),
     );
-    // Reload if a spot was saved.
+
     if (result == true && context.mounted) {
       context.read<SpotProvider>().loadSpots();
     }
   }
 
-  Future<void> _navigateToDetail(BuildContext context, Spot spot) async {
+  Future<void> _navigateToDetail(
+      BuildContext context,
+      Spot spot,
+      ) async {
     final result = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
-        builder: (_) => DetailScreen(spotId: spot.id!),
+        builder: (_) => DetailScreen(
+          spotId: spot.id!,
+        ),
       ),
     );
+
     if (result == true && context.mounted) {
       context.read<SpotProvider>().loadSpots();
     }
@@ -161,101 +229,120 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.onAdd, this.isFiltered = false});
+  const _EmptyState({
+    required this.onAdd,
+    this.isFiltered = false,
+  });
 
   final VoidCallback onAdd;
-
-  /// When `true`, the empty list is the result of an active search or filter
-  /// rather than the database genuinely having no spots.
   final bool isFiltered;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              isFiltered ? Icons.search_off : Icons.place_outlined,
-              size: 72,
-              color: theme.colorScheme.outline,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              isFiltered
-                  ? 'Tidak ada spot yang cocok'
-                  : 'Belum ada spot tersimpan',
-              style: theme.textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              isFiltered
-                  ? 'Coba ubah kata kunci pencarian atau filter kategori.'
-                  : 'Temukan lokasi menarik dan simpan di sini secara offline.',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.outline,
+      child: Column(
+        mainAxisAlignment:
+            MainAxisAlignment.center,
+        children: [
+
+          Icon(
+            isFiltered
+                ? Icons.search_off
+                : Icons.location_on_outlined,
+            size: 80,
+            color: AppColors.primary,
+          ),
+
+          const SizedBox(height: 20),
+
+          Text(
+            isFiltered
+                ? "Tidak ada hasil"
+                : "Belum ada Spot Favorit",
+            style: theme.textTheme.titleLarge,
+          ),
+
+          const SizedBox(height: 10),
+
+          Text(
+            isFiltered
+                ? "Coba ubah kata kunci pencarian."
+                : "Tambahkan lokasi pertama kamu.",
+            textAlign: TextAlign.center,
+          ),
+
+          if (!isFiltered) ...[
+            const SizedBox(height: 24),
+
+            FilledButton.icon(
+              onPressed: onAdd,
+              icon: const Icon(Icons.add),
+              label: const Text(
+                "Tambah Spot",
               ),
             ),
-            if (!isFiltered) ...[
-              const SizedBox(height: 24),
-              FilledButton.icon(
-                onPressed: onAdd,
-                icon: const Icon(Icons.add),
-                label: const Text('Tambah Spot Pertama'),
-              ),
-            ],
-          ],
-        ),
+          ]
+        ],
       ),
     );
   }
 }
 
 class _ErrorState extends StatelessWidget {
-  const _ErrorState({required this.message, required this.onRetry});
+  const _ErrorState({
+    required this.message,
+    required this.onRetry,
+  });
 
   final String message;
   final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.error_outline,
-              size: 72,
-              color: theme.colorScheme.error,
+      child: Column(
+        mainAxisAlignment:
+            MainAxisAlignment.center,
+        children: [
+
+          const Icon(
+            Icons.error_outline,
+            size: 70,
+            color: Colors.red,
+          ),
+
+          const SizedBox(height: 20),
+
+          const Text(
+            "Terjadi Kesalahan",
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
             ),
-            const SizedBox(height: 16),
-            Text(
-              'Terjadi kesalahan',
-              style: theme.textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
-            Text(
+          ),
+
+          const SizedBox(height: 10),
+
+          Padding(
+            padding:
+                const EdgeInsets.symmetric(
+                    horizontal: 30),
+            child: Text(
               message,
               textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.outline,
-              ),
             ),
-            const SizedBox(height: 24),
-            FilledButton.icon(
-              onPressed: onRetry,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Coba Lagi'),
-            ),
-          ],
-        ),
+          ),
+
+          const SizedBox(height: 25),
+
+          FilledButton.icon(
+            onPressed: onRetry,
+            icon: const Icon(Icons.refresh),
+            label: const Text("Coba Lagi"),
+          ),
+        ],
       ),
     );
   }

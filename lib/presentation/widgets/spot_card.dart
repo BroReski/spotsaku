@@ -27,7 +27,7 @@ class SpotCard extends StatelessWidget {
     final hasPhoto = spot.photoPath != null && spot.photoPath!.isNotEmpty;
 
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      margin: const EdgeInsets.symmetric(horizontal: 0, vertical: 2),
       elevation: 2,
       clipBehavior: Clip.antiAlias,
       child: InkWell(
