@@ -18,7 +18,7 @@ import '../models/spot.dart';
 
 class SpotRepository {
   SpotRepository({DatabaseHelper? dbHelper})
-      : _db = dbHelper ?? DatabaseHelper.instance;
+    : _db = dbHelper ?? DatabaseHelper.instance;
 
   final DatabaseHelper _db;
 
@@ -149,24 +149,28 @@ class SpotRepository {
       'notes',
       'rating',
       'isVisited',
+      'reminderAt',
       'createdAt',
       'updatedAt',
     ];
     final rows = spots
-        .map((s) => <dynamic>[
-              s.id?.toString() ?? '',
-              s.name,
-              s.category,
-              s.latitude?.toString() ?? '',
-              s.longitude?.toString() ?? '',
-              s.mapsUrl ?? '',
-              s.photoPath ?? '',
-              s.notes ?? '',
-              s.rating?.toString() ?? '',
-              s.isVisited ? '1' : '0',
-              s.createdAt,
-              s.updatedAt,
-            ])
+        .map(
+          (s) => <dynamic>[
+            s.id?.toString() ?? '',
+            s.name,
+            s.category,
+            s.latitude?.toString() ?? '',
+            s.longitude?.toString() ?? '',
+            s.mapsUrl ?? '',
+            s.photoPath ?? '',
+            s.notes ?? '',
+            s.rating?.toString() ?? '',
+            s.isVisited ? '1' : '0',
+            s.reminderAt ?? '',
+            s.createdAt,
+            s.updatedAt,
+          ],
+        )
         .toList();
     return const ListToCsvConverter().convert([header, ...rows]);
   }
@@ -191,6 +195,121 @@ class SpotRepository {
     final file = File(p.join(exportDir.path, fileName));
     await file.writeAsString(content);
     return file.path;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Import helpers (CSV / JSON) — restore from a backup file.
+  // ---------------------------------------------------------------------------
+
+  /// Parses a CSV string (same format as [toCsv]) and inserts every row
+  /// as a new spot. Returns the number of spots imported.
+  ///
+  /// The `id` column is ignored — the database assigns fresh ids so
+  /// imports never collide with existing rows. `createdAt` / `updatedAt`
+  /// are preserved when present, otherwise defaulted to "now".
+  Future<int> importFromCsv(String csvContent) async {
+    final rows = const CsvToListConverter().convert(csvContent);
+    if (rows.length < 2) return 0;
+
+    // First row is the header — map column names to indices.
+    final header = rows.first.cast<String>();
+    int idx(String name) {
+      final i = header.indexOf(name);
+      return i >= 0 ? i : -1;
+    }
+
+    final iId = idx('id');
+    final iName = idx('name');
+    final iCat = idx('category');
+    final iLat = idx('latitude');
+    final iLng = idx('longitude');
+    final iMaps = idx('mapsUrl');
+    final iPhoto = idx('photoPath');
+    final iNotes = idx('notes');
+    final iRating = idx('rating');
+    final iVisited = idx('isVisited');
+    final iReminder = idx('reminderAt');
+    final iCreated = idx('createdAt');
+
+    var count = 0;
+    for (var r = 1; r < rows.length; r++) {
+      final row = rows[r];
+      String cell(int i) => i >= 0 && i < row.length ? row[i].toString() : '';
+
+      final name = cell(iName);
+      if (name.isEmpty) continue;
+
+      final latVal = cell(iLat);
+      final lngVal = cell(iLng);
+      final ratingVal = cell(iRating);
+
+      final spot = Spot(
+        name: name,
+        category: cell(iCat),
+        latitude: latVal.isEmpty ? null : double.tryParse(latVal),
+        longitude: lngVal.isEmpty ? null : double.tryParse(lngVal),
+        mapsUrl: cell(iMaps).isEmpty ? null : cell(iMaps),
+        photoPath: cell(iPhoto).isEmpty ? null : cell(iPhoto),
+        notes: cell(iNotes).isEmpty ? null : cell(iNotes),
+        rating: ratingVal.isEmpty ? null : int.tryParse(ratingVal),
+        isVisited: cell(iVisited) == '1' || cell(iVisited) == 'true',
+        reminderAt: cell(iReminder).isEmpty ? null : cell(iReminder),
+        createdAt: cell(iCreated).isEmpty ? _nowIso() : cell(iCreated),
+        updatedAt: _nowIso(),
+      );
+      // Preserve the original id only when importing into an empty DB;
+      // otherwise let SQLite auto-assign a fresh id to avoid collisions.
+      await _db.insertSpot(
+        spot
+            .copyWith(
+              id: iId >= 0 && cell(iId).isNotEmpty
+                  ? int.tryParse(cell(iId))
+                  : null,
+            )
+            .toMap(),
+      );
+      count++;
+    }
+    return count;
+  }
+
+  /// Parses a JSON string (same format as [toJson]) and inserts every
+  /// entry as a new spot. Returns the number of spots imported.
+  Future<int> importFromJson(String jsonContent) async {
+    final List<dynamic> list = jsonDecode(jsonContent) as List<dynamic>;
+    var count = 0;
+    for (final entry in list) {
+      final map = Map<String, Object?>.from(entry as Map);
+      // Always assign a fresh updatedAt; clear id to avoid collisions.
+      map.remove('id');
+      map['updatedAt'] = _nowIso();
+      if (!map.containsKey('createdAt') || map['createdAt'] == null) {
+        map['createdAt'] = _nowIso();
+      }
+      await _db.insertSpot(map);
+      count++;
+    }
+    return count;
+  }
+
+  /// Reads [filePath] and imports it based on the file extension.
+  /// `.csv` → [importFromCsv], `.json` → [importFromJson].
+  /// Throws [ArgumentError] for unsupported extensions.
+  Future<int> importFromFile(String filePath) async {
+    final file = File(filePath);
+    if (!await file.exists()) {
+      throw FileSystemException('File tidak ditemukan', filePath);
+    }
+    final content = await file.readAsString();
+    final ext = p.extension(filePath).toLowerCase();
+    switch (ext) {
+      case '.csv':
+        return importFromCsv(content);
+      case '.json':
+        return importFromJson(content);
+      default:
+        throw ArgumentError('Format file tidak didukung: $ext');
+    }
   }
 
   // ---------------------------------------------------------------------------

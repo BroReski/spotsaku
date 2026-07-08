@@ -8,6 +8,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
+import '../../core/constants/app_colors.dart';
 import '../../data/models/spot.dart';
 import 'star_rating.dart';
 
@@ -97,8 +98,23 @@ class SpotCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              // --- Status badge ---
-              _StatusBadge(isVisited: spot.isVisited),
+              // --- Reminder + Status badges ---
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (spot.reminderAt != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Icon(
+                        Icons.notifications_active,
+                        size: 16,
+                        color: AppColors.warning,
+                      ),
+                    ),
+                  _StatusBadge(isVisited: spot.isVisited),
+                ],
+              ),
             ],
           ),
         ),
@@ -126,8 +142,10 @@ class _StatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final color = isVisited ? Colors.green.shade700 : Colors.grey.shade500;
-    final bg = isVisited ? Colors.green.shade50 : Colors.grey.shade100;
+    final color = isVisited ? AppColors.success : AppColors.textSecondary;
+    final bg = isVisited
+        ? AppColors.success.withValues(alpha: 0.1)
+        : AppColors.textSecondary.withValues(alpha: 0.1);
     final label = isVisited ? 'Dikunjungi' : 'Wishlist';
 
     return Container(

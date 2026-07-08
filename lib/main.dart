@@ -7,6 +7,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'presentation/providers/category_provider.dart';
 import 'presentation/providers/settings_provider.dart';
 import 'presentation/providers/spot_provider.dart';
 import 'presentation/providers/theme_provider.dart';
@@ -36,6 +37,7 @@ class SpotSakuApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()..loadTheme()),
+        ChangeNotifierProvider(create: (_) => CategoryProvider()..loadCategories()),
         ChangeNotifierProvider(create: (_) => SpotProvider()),
         ChangeNotifierProvider(create: (_) => SettingsProvider()..loadSettings()),
       ],

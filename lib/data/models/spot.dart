@@ -5,6 +5,13 @@
 /// instance via [copyWith].
 library;
 
+/// Sentinel used to distinguish "argument not provided" from
+/// "explicitly null" in [Spot.copyWith] for the clearable `reminderAt`
+/// field. Must be `const` to be usable as a default parameter value.
+class _ReminderSentinel {
+  const _ReminderSentinel();
+}
+
 /// A single saved location entry.
 class Spot {
   /// Primary key. `null` until the row has been inserted into the database.
@@ -44,6 +51,11 @@ class Spot {
   /// Visit status. `false` (0) = Wishlist, `true` (1) = Sudah Dikunjungi.
   final bool isVisited;
 
+  /// ISO-8601 timestamp of a scheduled reminder notification. `null` when
+  /// no reminder is set. Used by [NotificationService] to schedule/cancel
+  /// local notifications.
+  final String? reminderAt;
+
   /// ISO-8601 timestamp of when the spot was first created.
   final String createdAt;
 
@@ -61,6 +73,7 @@ class Spot {
     this.notes,
     this.rating,
     required this.isVisited,
+    this.reminderAt,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -78,6 +91,7 @@ class Spot {
       notes: map['notes'] as String?,
       rating: map['rating'] as int?,
       isVisited: (map['isVisited'] as int?) == 1,
+      reminderAt: map['reminderAt'] as String?,
       createdAt: map['createdAt'] as String? ?? '',
       updatedAt: map['updatedAt'] as String? ?? '',
     );
@@ -96,12 +110,19 @@ class Spot {
       'notes': notes,
       'rating': rating,
       'isVisited': isVisited ? 1 : 0,
+      'reminderAt': reminderAt,
       'createdAt': createdAt,
       'updatedAt': updatedAt,
     };
   }
 
   /// Returns a copy of this spot with the given fields replaced.
+  ///
+  /// [reminderAt] is clearable: pass `null` explicitly to remove the
+  /// reminder. A sentinel default distinguishes "not provided" (keep the
+  /// current value) from "explicitly null" (clear it).
+  static const _reminderSentinel = _ReminderSentinel();
+
   Spot copyWith({
     int? id,
     String? name,
@@ -113,6 +134,7 @@ class Spot {
     String? notes,
     int? rating,
     bool? isVisited,
+    Object? reminderAt = _reminderSentinel,
     String? createdAt,
     String? updatedAt,
   }) {
@@ -127,6 +149,9 @@ class Spot {
       notes: notes ?? this.notes,
       rating: rating ?? this.rating,
       isVisited: isVisited ?? this.isVisited,
+      reminderAt: identical(reminderAt, _reminderSentinel)
+          ? this.reminderAt
+          : reminderAt as String?,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

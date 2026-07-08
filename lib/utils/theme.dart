@@ -1,11 +1,19 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+
+import '../core/constants/app_colors.dart';
 
 class AppTheme {
   AppTheme._();
 
-  static const Color primary = Color(0xFF017F3C);
+  /// Single source of truth for the primary/brand color.
+  ///
+  /// Both the [ColorScheme] (via `ColorScheme.fromSeed`) and the widget
+  /// tokens in [AppColors] reference this constant so the FAB, search icon,
+  /// chips, and scaffold always stay in sync.
+  static const Color primary = AppColors.primary;
 
   //==============================
   // LIGHT
@@ -21,6 +29,8 @@ class AppTheme {
       useMaterial3: true,
 
       colorScheme: scheme,
+
+      textTheme: GoogleFonts.poppinsTextTheme(ThemeData.light().textTheme),
 
       scaffoldBackgroundColor: const Color(0xffF7F8FA),
 
@@ -110,6 +120,8 @@ class AppTheme {
       useMaterial3: true,
 
       colorScheme: scheme,
+
+      textTheme: GoogleFonts.poppinsTextTheme(ThemeData.dark().textTheme),
 
       scaffoldBackgroundColor: const Color(0xff121212),
 

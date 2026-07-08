@@ -91,4 +91,10 @@ class NotificationService {
   Future<void> cancelReminder(int id) async {
     await _plugin.cancel(id);
   }
+
+  /// Cancels all scheduled reminders. Used when the user globally
+  /// disables notifications in Settings.
+  Future<void> cancelAllReminders() async {
+    await _plugin.cancelAll();
+  }
 }

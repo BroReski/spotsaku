@@ -5,8 +5,10 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:file_selector/file_selector.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/constants/app_colors.dart';
 import '../providers/settings_provider.dart';
 import '../providers/spot_provider.dart';
 
@@ -56,9 +58,12 @@ class _StatsSettingsScreenState extends State<StatsSettingsScreen> {
         padding: const EdgeInsets.all(16),
         children: [
           // --- Stats section ---
-          Text('Statistik Kunjungan',
-              style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold)),
+          Text(
+            'Statistik Kunjungan',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           const SizedBox(height: 12),
           if (_total == null)
             const Center(child: CircularProgressIndicator())
@@ -79,7 +84,7 @@ class _StatsSettingsScreenState extends State<StatsSettingsScreen> {
                     title: 'Dikunjungi',
                     value: _visited.toString(),
                     icon: Icons.check_circle_outline,
-                    color: Colors.green,
+                    color: AppColors.success,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -88,7 +93,7 @@ class _StatsSettingsScreenState extends State<StatsSettingsScreen> {
                     title: 'Wishlist',
                     value: _wishlist.toString(),
                     icon: Icons.bookmark_outline,
-                    color: Colors.amber,
+                    color: AppColors.warning,
                   ),
                 ),
               ],
@@ -96,11 +101,15 @@ class _StatsSettingsScreenState extends State<StatsSettingsScreen> {
             const SizedBox(height: 16),
             Card(
               child: ListTile(
-                leading: Icon(Icons.star_outline,
-                    color: theme.colorScheme.primary),
+                leading: Icon(
+                  Icons.star_outline,
+                  color: theme.colorScheme.primary,
+                ),
                 title: const Text('Rata-rata Rating'),
                 trailing: Text(
-                  _avgRating! == 0 ? 'Belum ada' : _avgRating!.toStringAsFixed(1),
+                  _avgRating! == 0
+                      ? 'Belum ada'
+                      : _avgRating!.toStringAsFixed(1),
                   style: theme.textTheme.titleLarge,
                 ),
               ),
@@ -125,14 +134,16 @@ class _StatsSettingsScreenState extends State<StatsSettingsScreen> {
           ],
           const SizedBox(height: 32),
           // --- Settings section ---
-          Text('Pengaturan',
-              style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold)),
+          Text(
+            'Pengaturan',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           const SizedBox(height: 12),
           SwitchListTile(
             title: const Text('Notifikasi Pengingat'),
-            subtitle: const Text(
-                'Aktifkan reminder untuk spot wishlist'),
+            subtitle: const Text('Aktifkan reminder untuk spot wishlist'),
             value: settings.notificationsEnabled,
             onChanged: (_) => settings.toggleNotifications(),
           ),
@@ -146,7 +157,8 @@ class _StatsSettingsScreenState extends State<StatsSettingsScreen> {
                 ? const SizedBox(
                     width: 20,
                     height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2))
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
                 : const Icon(Icons.chevron_right),
             onTap: settings.isLoading ? null : () => _exportCsv(settings),
           ),
@@ -158,7 +170,8 @@ class _StatsSettingsScreenState extends State<StatsSettingsScreen> {
                 ? const SizedBox(
                     width: 20,
                     height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2))
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
                 : const Icon(Icons.chevron_right),
             onTap: settings.isLoading ? null : () => _exportJson(settings),
           ),
@@ -168,17 +181,35 @@ class _StatsSettingsScreenState extends State<StatsSettingsScreen> {
               child: Text(
                 'Berkas terakhir: ${settings.lastExportPath}',
                 style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.outline),
+                  color: theme.colorScheme.outline,
+                ),
               ),
             ),
+          const SizedBox(height: 8),
+          // --- Import ---
+          ListTile(
+            leading: const Icon(Icons.file_upload_outlined),
+            title: const Text('Impor Data'),
+            subtitle: const Text('Pulihkan dari berkas CSV/JSON'),
+            trailing: settings.isLoading
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.chevron_right),
+            onTap: settings.isLoading ? null : _importData,
+          ),
           const SizedBox(height: 24),
           // --- About ---
           const Divider(),
           ListTile(
             leading: const Icon(Icons.info_outline),
             title: const Text('Tentang SpotSaku'),
-            subtitle: const Text('Aplikasi Jurnal & Wishlist Tempat\n'
-                'Kelompok 1 — Mobile Computing 2025/2026'),
+            subtitle: const Text(
+              'Aplikasi Jurnal & Wishlist Tempat\n'
+              'Kelompok 1 — Mobile Computing 2025/2026',
+            ),
           ),
         ],
       ),
@@ -189,15 +220,15 @@ class _StatsSettingsScreenState extends State<StatsSettingsScreen> {
     try {
       final path = await settings.exportCsv();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('CSV diekspor: $path')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('CSV diekspor: $path')));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal ekspor: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Gagal ekspor: $e')));
       }
     }
   }
@@ -206,15 +237,44 @@ class _StatsSettingsScreenState extends State<StatsSettingsScreen> {
     try {
       final path = await settings.exportJson();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('JSON diekspor: $path')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('JSON diekspor: $path')));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal ekspor: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Gagal ekspor: $e')));
+      }
+    }
+  }
+
+  Future<void> _importData() async {
+    final settings = context.read<SettingsProvider>();
+    final spotProvider = context.read<SpotProvider>();
+    try {
+      const csvTypeGroup = XTypeGroup(
+        label: 'Backup files',
+        extensions: ['csv', 'json'],
+      );
+      final file = await openFile(acceptedTypeGroups: [csvTypeGroup]);
+      if (file == null) return;
+
+      final path = file.path;
+      final count = await settings.importData(path);
+      await spotProvider.loadSpots();
+      await _loadStats();
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('$count spot berhasil diimpor')));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Gagal impor: $e')));
       }
     }
   }
@@ -243,13 +303,18 @@ class _StatCard extends StatelessWidget {
           children: [
             Icon(icon, color: color, size: 28),
             const SizedBox(height: 8),
-            Text(value,
-                style: theme.textTheme.headlineSmall
-                    ?.copyWith(fontWeight: FontWeight.bold)),
+            Text(
+              value,
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             const SizedBox(height: 4),
-            Text(title,
-                style: theme.textTheme.bodySmall,
-                textAlign: TextAlign.center),
+            Text(
+              title,
+              style: theme.textTheme.bodySmall,
+              textAlign: TextAlign.center,
+            ),
           ],
         ),
       ),

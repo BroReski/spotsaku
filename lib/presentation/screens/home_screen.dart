@@ -9,8 +9,8 @@ import 'package:provider/provider.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../data/models/spot.dart';
-import '../../utils/constants.dart';
 
+import '../providers/category_provider.dart';
 import '../providers/spot_provider.dart';
 import '../providers/theme_provider.dart';
 
@@ -44,6 +44,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final spotProvider = context.watch<SpotProvider>();
     final themeProvider = context.watch<ThemeProvider>();
+    final categoryProvider = context.watch<CategoryProvider>();
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -95,13 +96,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 height: 36,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
-                  itemCount: AppCategories.chips.length,
+                  itemCount: categoryProvider.chips.length,
 
-                  separatorBuilder: (_, __) =>
+                  separatorBuilder: (_, _) =>
                       const SizedBox(width: 10),
 
                   itemBuilder: (context, index) {
-                    final category = AppCategories.chips[index];
+                    final category = categoryProvider.chips[index];
 
                     return SizedBox(
                       width: 105,
@@ -118,6 +119,14 @@ class _HomeScreenState extends State<HomeScreen> {
                     );
                   },
                 ),
+              ),
+
+              const SizedBox(height: 20),
+
+              /// STATUS FILTER (Semua / Wishlist / Dikunjungi)
+              _StatusFilterBar(
+                value: spotProvider.statusFilter,
+                onChanged: spotProvider.setStatusFilter,
               ),
 
               const SizedBox(height: 20),
@@ -142,41 +151,31 @@ class _HomeScreenState extends State<HomeScreen> {
                         : spotProvider.spots.isEmpty
                             ? _EmptyState(
                                 onAdd: () =>
-                                    _navigateToAdd(
-                                        context),
+                                    _navigateToAdd(context),
                                 isFiltered:
-                                    spotProvider
-                                            .searchQuery
+                                    spotProvider.searchQuery
                                             .isNotEmpty ||
-                                        spotProvider
-                                                .selectedCategory !=
-                                            "Semua",
+                                    spotProvider.selectedCategory !=
+                                        "Semua" ||
+                                    spotProvider.statusFilter !=
+                                        null,
                               )
                             : RefreshIndicator(
-                                color:
-                                    AppColors.primary,
+                                color: AppColors.primary,
                                 onRefresh: () =>
-                                    spotProvider
-                                        .loadSpots(),
-                                child:
-                                    ListView.builder(
+                                    spotProvider.loadSpots(),
+                                child: ListView.builder(
                                   itemCount:
-                                      spotProvider
-                                          .spots.length,
-                                  itemBuilder:
-                                      (context,
-                                          index) {
+                                      spotProvider.spots.length,
+                                  itemBuilder: (context, index) {
                                     final spot =
-                                        spotProvider
-                                            .spots[index];
+                                        spotProvider.spots[index];
 
                                     return Padding(
                                       padding:
                                           const EdgeInsets.only(
-                                              bottom:
-                                                  14),
-                                      child:
-                                          SpotCard(
+                                              bottom: 14),
+                                      child: SpotCard(
                                         spot: spot,
                                         onTap: () =>
                                             _navigateToDetail(
@@ -310,7 +309,7 @@ class _ErrorState extends StatelessWidget {
           const Icon(
             Icons.error_outline,
             size: 70,
-            color: Colors.red,
+            color: AppColors.danger,
           ),
 
           const SizedBox(height: 20),
@@ -344,6 +343,139 @@ class _ErrorState extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Dropdown filter for the spot list by visit status.
+///
+/// Only the currently selected filter is shown as the button label.
+/// `null` = Semua, `false` = Wishlist, `true` = Dikunjungi.
+class _StatusFilterBar extends StatelessWidget {
+  const _StatusFilterBar({
+    required this.value,
+    required this.onChanged,
+  });
+
+  /// Current filter value: `null` (all), `false` (wishlist), `true` (visited).
+  final bool? value;
+
+  /// Callback invoked when the user picks an option.
+  final ValueChanged<bool?> onChanged;
+
+  String get _label => switch (value) {
+        null => 'Semua',
+        false => 'Wishlist',
+        true => 'Dikunjungi',
+      };
+
+  IconData get _icon => switch (value) {
+        null => Icons.list,
+        false => Icons.bookmark_outline,
+        true => Icons.check_circle_outline,
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.shadow.withValues(
+              alpha: theme.brightness == Brightness.dark ? 0.5 : 0.1,
+            ),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<bool?>(
+          value: value,
+          isExpanded: true,
+          icon: const Icon(Icons.keyboard_arrow_down, size: 22),
+          style: theme.textTheme.bodyLarge,
+          // Shows only the selected filter as the button label.
+          selectedItemBuilder: (context) {
+            return [
+              _selectedItem(context, Icons.list, 'Semua'),
+              _selectedItem(context, Icons.bookmark_outline, 'Wishlist'),
+              _selectedItem(
+                  context, Icons.check_circle_outline, 'Dikunjungi'),
+            ];
+          },
+          items: const [
+            DropdownMenuItem(
+              value: null,
+              child: _FilterOption(
+                icon: Icons.list,
+                label: 'Semua',
+              ),
+            ),
+            DropdownMenuItem(
+              value: false,
+              child: _FilterOption(
+                icon: Icons.bookmark_outline,
+                label: 'Wishlist',
+              ),
+            ),
+            DropdownMenuItem(
+              value: true,
+              child: _FilterOption(
+                icon: Icons.check_circle_outline,
+                label: 'Dikunjungi',
+              ),
+            ),
+          ],
+          onChanged: onChanged,
+        ),
+      ),
+    );
+  }
+
+  Widget _selectedItem(
+    BuildContext context,
+    IconData icon,
+    String label,
+  ) {
+    final theme = Theme.of(context);
+    return Row(
+      children: [
+        Icon(icon, size: 20, color: AppColors.primary),
+        const SizedBox(width: 10),
+        Text(
+          label,
+          style: theme.textTheme.bodyLarge?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// A single option row inside the dropdown menu.
+class _FilterOption extends StatelessWidget {
+  const _FilterOption({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      children: [
+        Icon(icon, size: 20, color: AppColors.primary),
+        const SizedBox(width: 12),
+        Text(label, style: theme.textTheme.bodyMedium),
+      ],
     );
   }
 }

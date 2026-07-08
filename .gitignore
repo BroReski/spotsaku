@@ -45,3 +45,9 @@ app.*.map.json
 /android/app/release
  
 .env
+
+# Generated platform files
+*.cmake
+GeneratedPluginRegistrant.*
+
+/plans

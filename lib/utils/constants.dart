@@ -38,6 +38,6 @@ class AppDatabase {
   AppDatabase._();
 
   static const String dbName = 'spotsaku.db';
-  static const int dbVersion = 1;
+  static const int dbVersion = 2;
   static const String tableSpots = 'spots';
 }

@@ -88,9 +88,8 @@ class _HeaderButton extends StatelessWidget {
       color: theme.cardColor,
       borderRadius: BorderRadius.circular(14),
       elevation: 2,
-      shadowColor: theme.brightness == Brightness.dark
-          ? Colors.black54
-          : Colors.black12,
+      shadowColor: AppColors.shadow.withValues(
+          alpha: theme.brightness == Brightness.dark ? 1.0 : 0.4),
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
         onTap: onTap,

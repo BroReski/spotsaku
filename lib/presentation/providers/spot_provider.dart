@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../data/models/spot.dart';
 import '../../data/repositories/spot_repository.dart';
+import '../../utils/notification_service.dart';
 
 class SpotProvider extends ChangeNotifier {
   SpotProvider({SpotRepository? repository})
@@ -102,6 +103,31 @@ class SpotProvider extends ChangeNotifier {
     await loadSpots();
   }
 
+  /// Sets or clears a reminder for a spot.
+  ///
+  /// When [reminderAt] is non-null, schedules a local notification via
+  /// [NotificationService] and persists the timestamp. When `null`, any
+  /// existing reminder is cancelled and the field is cleared.
+  Future<void> setReminder(Spot spot, DateTime? reminderAt) async {
+    final id = spot.id;
+    if (id == null) return;
+
+    if (reminderAt != null) {
+      await NotificationService.instance.scheduleReminder(
+        id: id,
+        spotName: spot.name,
+        scheduledTime: reminderAt,
+      );
+      await _repo.update(
+        spot.copyWith(reminderAt: reminderAt.toIso8601String()),
+      );
+    } else {
+      await NotificationService.instance.cancelReminder(id);
+      await _repo.update(spot.copyWith(reminderAt: null));
+    }
+    await loadSpots();
+  }
+
   // --- Filters --------------------------------------------------------------
 
   void setSearchQuery(String query) {
@@ -124,6 +150,13 @@ class SpotProvider extends ChangeNotifier {
     } else {
       _statusFilter = null;
     }
+    loadSpots();
+  }
+
+  /// Sets the status filter directly. `null` shows all spots, `false`
+  /// shows only wishlist, `true` shows only visited.
+  void setStatusFilter(bool? status) {
+    _statusFilter = status;
     loadSpots();
   }
 

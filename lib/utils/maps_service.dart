@@ -33,12 +33,10 @@ class MapsService {
 
   Future<bool> _launch(Uri uri) async {
     try {
-      // Try the native app first (mode prefersExternalApplication).
-      if (await canLaunchUrl(uri)) {
-        return launchUrl(uri, mode: LaunchMode.externalApplication);
-      }
-      // Fall back to in-app browser.
-      return launchUrl(uri, mode: LaunchMode.inAppBrowserView);
+      // Launch directly without `canLaunchUrl` — the Flutter team advises
+      // against it because it can return false negatives (especially on
+      // iOS simulator), causing valid URLs to never open.
+      return launchUrl(uri, mode: LaunchMode.externalApplication);
     } catch (_) {
       return false;
     }

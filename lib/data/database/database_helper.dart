@@ -49,6 +49,7 @@ class DatabaseHelper {
         notes       TEXT,
         rating      INTEGER,
         isVisited   INTEGER NOT NULL DEFAULT 0,
+        reminderAt  TEXT,
         createdAt   TEXT    NOT NULL,
         updatedAt   TEXT    NOT NULL
       )
@@ -57,12 +58,14 @@ class DatabaseHelper {
 
   /// Handles future schema migrations.
   ///
-  /// The current schema is the final v1 design (including `rating` and
-  /// `updatedAt`), so no migration steps are needed yet. New columns can
-  /// be added here with `ALTER TABLE` when the version is bumped.
+  /// v1 → v2: adds the `reminderAt` column for scheduled notification
+  /// reminders.
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    // Intentionally empty: v1 is the initial release. Add ALTER TABLE
-    // statements here as the schema evolves (e.g. for v2).
+    if (oldVersion < 2) {
+      await db.execute(
+        'ALTER TABLE ${AppDatabase.tableSpots} ADD COLUMN reminderAt TEXT',
+      );
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -85,6 +88,10 @@ class DatabaseHelper {
   }
 
   /// Returns a single spot by id.
+  ///
+  /// Throws a [StateError] (wrapped as an [Exception]) when no row matches
+  /// [id], so callers can present a friendly "spot tidak ditemukan" message
+  /// instead of crashing on `rows.first`.
   Future<Map<String, Object?>> querySpotById(int id) async {
     final db = await database();
     final rows = await db.query(
@@ -93,6 +100,9 @@ class DatabaseHelper {
       whereArgs: [id],
       limit: 1,
     );
+    if (rows.isEmpty) {
+      throw Exception('Spot tidak ditemukan');
+    }
     return rows.first;
   }
 

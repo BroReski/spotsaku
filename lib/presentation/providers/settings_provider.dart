@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../data/repositories/spot_repository.dart';
 import '../../utils/constants.dart';
+import '../../utils/notification_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SettingsProvider extends ChangeNotifier {
@@ -30,11 +31,17 @@ class SettingsProvider extends ChangeNotifier {
   }
 
   /// Toggles the reminder-notification feature and persists the choice.
+  ///
+  /// When toggled off, all scheduled reminders are cancelled so the user
+  /// is not surprised by notifications after disabling the feature.
   Future<void> toggleNotifications() async {
     _notificationsEnabled = !_notificationsEnabled;
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(AppPrefs.notificationsEnabled, _notificationsEnabled);
+    if (!_notificationsEnabled) {
+      await NotificationService.instance.cancelAllReminders();
+    }
   }
 
   /// Exports all spots as CSV. Returns the absolute file path.
@@ -63,6 +70,20 @@ class SettingsProvider extends ChangeNotifier {
       final path = await _repo.exportToFile(json, 'spotsaku_backup_$stamp.json');
       _lastExportPath = path;
       return path;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Imports spots from a backup file (.csv or .json). Returns the number
+  /// of spots imported. The caller is responsible for refreshing the
+  /// SpotProvider list afterwards.
+  Future<int> importData(String filePath) async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      return await _repo.importFromFile(filePath);
     } finally {
       _isLoading = false;
       notifyListeners();

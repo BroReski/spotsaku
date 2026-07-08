@@ -10,11 +10,13 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/constants/app_colors.dart';
 import '../../data/models/spot.dart';
 import '../../utils/constants.dart';
 import '../../utils/location_service.dart';
 import '../../utils/media_service.dart';
 import '../providers/spot_provider.dart';
+import '../providers/category_provider.dart';
 import '../widgets/star_rating.dart';
 
 class AddEditScreen extends StatefulWidget {
@@ -72,6 +74,7 @@ class _AddEditScreenState extends State<AddEditScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final categoryProvider = context.watch<CategoryProvider>();
     return Scaffold(
       appBar: AppBar(
         title: Text(_isEditing ? 'Edit Spot' : 'Tambah Spot Baru'),
@@ -112,10 +115,20 @@ class _AddEditScreenState extends State<AddEditScreen> {
                 border: OutlineInputBorder(),
                 prefixIcon: Icon(Icons.label_outline),
               ),
-              items: AppCategories.predefined
+              items: categoryProvider.all
                   .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                   .toList(),
               onChanged: (v) => setState(() => _category = v ?? _category),
+            ),
+            const SizedBox(height: 8),
+            // --- Add custom category ---
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: _showAddCategoryDialog,
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('Tambah Kategori Baru'),
+              ),
             ),
             const SizedBox(height: 16),
             // --- Location section ---
@@ -243,7 +256,7 @@ class _AddEditScreenState extends State<AddEditScreen> {
             ),
             if (_photoPath != null)
               ListTile(
-                leading: const Icon(Icons.delete_outline, color: Colors.red),
+                leading: const Icon(Icons.delete_outline, color: AppColors.danger),
                 title: const Text('Hapus Foto'),
                 onTap: () => Navigator.pop(context, ImageSourceChoice.remove),
               ),
@@ -294,6 +307,55 @@ class _AddEditScreenState extends State<AddEditScreen> {
       }
     } finally {
       if (mounted) setState(() => _isFetchingLocation = false);
+    }
+  }
+
+  /// Shows a dialog to add a new custom category label.
+  Future<void> _showAddCategoryDialog() async {
+    final controller = TextEditingController();
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Kategori Baru'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(
+            labelText: 'Nama Kategori',
+            border: OutlineInputBorder(),
+            prefixIcon: Icon(Icons.label_outline),
+          ),
+          textCapitalization: TextCapitalization.words,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () =>
+                Navigator.pop(context, controller.text.trim()),
+            child: const Text('Tambah'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+
+    final label = result;
+    if (label == null || label.isEmpty || !mounted) return;
+
+    final added = await context.read<CategoryProvider>().addCategory(label);
+    if (!mounted) return;
+    if (added) {
+      setState(() => _category = label);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Kategori "$label" ditambahkan')),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Kategori sudah ada atau kosong.')),
+      );
     }
   }
 
